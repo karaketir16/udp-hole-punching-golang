@@ -82,13 +82,15 @@ type Peer struct {
 	UDPDataChannel 			chan []byte
 
 	SyncChan				chan *Package
+
+	LastReceivedNumber		uint64
 }
 
 //InitializePeer initialize peer with Address of peer and UDP channel 
 func (p *Peer) InitializePeer(Addr *net.UDPAddr, UDPDataChannel chan []byte){
 	p.Addr = Addr
 
-	p.PackageNumber = 0;
+	p.PackageNumber = 1;
 
 	p.AckQueue	= make(chan uint64, 100);
 
@@ -101,6 +103,7 @@ func (p *Peer) InitializePeer(Addr *net.UDPAddr, UDPDataChannel chan []byte){
 
 	p.SyncChan = make(chan *Package, 1);
 
+	p.LastReceivedNumber = 0;
 
 
 	go p.Controller();
@@ -182,7 +185,10 @@ func (p *Peer) receiverF() {
 			switch pkg.Type {
 				case EnumPackageACK:
 				case EnumPackageData:
-					p.ReceiverPayloadChannel <- pkg.Payload
+					if pkg.Number > p.LastReceivedNumber {
+						p.ReceiverPayloadChannel <- pkg.Payload
+						p.LastReceivedNumber = pkg.Number
+					}
 				default: 
 			}
 		}
